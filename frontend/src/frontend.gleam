@@ -449,6 +449,19 @@ fn stat_view(name:String,val:Int) {
   ])
 }
 
+fn notes_view() {
+  html.text("
+    9/29 - cargo hold notes:
+    Powder barels :) explosions
+    2 cannons 1 frount 1 back
+    Chest 10,000 gold
+    cloths
+    was a merchent ship.
+    cloths
+    textiles
+    wooden products
+  ")
+}
 
 
 

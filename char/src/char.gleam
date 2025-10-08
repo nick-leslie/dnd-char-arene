@@ -400,7 +400,7 @@ pub type Spell {
 
 
 
-pub type Item {
+  pub type Item {
   Weppon(
     name:String,
     cost:Int,
@@ -489,6 +489,12 @@ fn item_decoder() -> decode.Decoder(Item) {
   }
 }
 
+pub fn add_item(state:CharecterState,item:Item) {
+  CharecterState(
+    ..state,
+    items:dict.insert(state.items,item.name,item)
+  )
+}
 
 pub fn get_equipment(state:CharecterState) {
   list.map(state.equiped,dict.get(state.items,_))
