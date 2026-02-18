@@ -69,7 +69,7 @@ pub fn alarm(resource:String) {
 }
 pub fn detect_magic(resource:String) {
   Spell(
-    name:"alarm",
+    name:"Detect Magic",
     level:1,
     description:"
     For the duration, you sense the presence of magical effects within 30 feet of yourself. If you sense such effects, you can take the Magic action to see a faint aura around any visible creature or object in the area that bears the magic, and if an effect was created by a spell, you learn the spell’s school of magic.
@@ -110,5 +110,32 @@ pub fn hex(resource:String) {
     spell_type: char.SpellSave("strength"),
     range: 90
   , duration: char.Concentration(char.Minutes(10))
+  )
+}
+
+//todo allow for this to be auto cast
+pub fn  fiendish_vigor(resource:String) {
+  Spell(
+    name: "Fiendish Vigor",
+    level: 1,
+    description: "You gain 8 + 4 Temporary Hit Points.",
+    resource:,
+    casting_time: char.Action,
+    spell_type: char.Util,
+    range: 0
+  , duration: char.Instant
+  )
+}
+
+pub fn hellish_rebuke(resource:String) {
+  Spell(
+    name: "Fiendish Vigor",
+    level: 1,
+    description: "The creature that damaged you is momentarily surrounded by green flames. It makes a Dexterity saving throw, taking 2d10 Fire damage on a failed save or half as much damage on a successful one.",
+    resource:,
+    casting_time: char.Reaction,
+    spell_type: char.Util,
+    range: 60
+  , duration: char.Instant
   )
 }

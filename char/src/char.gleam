@@ -406,7 +406,8 @@ pub type Spell {
     cost:Int,
     description:String,
     tags:List(String),
-    dice:Dice,
+    dice:List(Dice),
+    // charges:String
     ability_score:List(String) // will pick the highest
   )
   Armor(
@@ -433,7 +434,7 @@ fn item_to_json(item: Item) -> json.Json {
       #("cost", json.int(cost)),
       #("description", json.string(description)),
       #("tags", json.array(tags, json.string)),
-      #("dice", dice_to_json(dice)),
+      #("dice", json.array(dice,dice_to_json)),
       #("ability_score", json.array(ability_score, json.string)),
     ])
     Armor(name:, cost:, description:, tags:, ac:, ability_score:) -> json.object([
@@ -464,7 +465,7 @@ fn item_decoder() -> decode.Decoder(Item) {
       use name <- decode.field("name", decode.string)
       use cost <- decode.field("cost", decode.int)
       use tags <- decode.field("tags", decode.list(decode.string))
-      use dice <- decode.field("dice", dice_decoder())
+      use dice <- decode.field("dice", decode.list(dice_decoder()))
       use description <- decode.field("description", decode.string)
       use ability_score <- decode.field("ability_score", decode.list(decode.string))
       decode.success(Weppon(name:, cost:, tags:, dice:, ability_score:, description: ))
@@ -542,4 +543,19 @@ fn dice_decoder() -> decode.Decoder(Dice) {
   use number <- decode.field("number", decode.int)
   use max <- decode.field("max", decode.int)
   decode.success(Dice(number:, max:))
+}
+
+
+pub fn long_rest(charecter:Charecter,charecter_state:CharecterState) {
+  CharecterState(
+    ..charecter_state,
+    hp: charecter.max_hp,
+    resources: dict.map_values(charecter_state.resources,fn(name,resource) {
+      use resource <- list.map(resource)
+      case resource {
+        Generic(used:) -> Generic(False)
+        SpellSlot(used:, level:) -> SpellSlot(..resource,used:False)
+      }
+    }),
+  )
 }

@@ -1470,6 +1470,15 @@ function fold_loop(loop$list, loop$initial, loop$fun) {
 function fold(dict4, initial, fun) {
   return fold_loop(map_to_list(dict4), initial, fun);
 }
+function do_map_values(f, dict4) {
+  let f$1 = (dict5, k, v) => {
+    return insert(dict5, k, f(k, v));
+  };
+  return fold(dict4, new_map(), f$1);
+}
+function map_values(dict4, fun) {
+  return do_map_values(fun, dict4);
+}
 
 // build/dev/javascript/gleam_stdlib/gleam/list.mjs
 var Ascending = class extends CustomType {
@@ -3022,6 +3031,8 @@ var Action = class extends CustomType {
 };
 var BonusAction = class extends CustomType {
 };
+var Reaction = class extends CustomType {
+};
 var Minutes = class extends CustomType {
   constructor($0) {
     super();
@@ -3522,7 +3533,7 @@ function item_to_json(item) {
         ["cost", int3(cost)],
         ["description", string3(description)],
         ["tags", array2(tags, string3)],
-        ["dice", dice_to_json(dice)],
+        ["dice", array2(dice, dice_to_json)],
         ["ability_score", array2(ability_score, string3)]
       ])
     );
@@ -3630,7 +3641,7 @@ function item_decoder() {
                   (tags) => {
                     return field(
                       "dice",
-                      dice_decoder(),
+                      list2(dice_decoder()),
                       (dice) => {
                         return field(
                           "description",
@@ -3811,6 +3822,37 @@ function charecter_state_decoder() {
     }
   );
 }
+function long_rest(charecter, charecter_state) {
+  let _record = charecter_state;
+  return new CharecterState(
+    _record.ac,
+    charecter.max_hp,
+    _record.speed,
+    _record.proficiency_bonus,
+    map_values(
+      charecter_state.resources,
+      (name, resource) => {
+        return map(
+          resource,
+          (resource2) => {
+            if (resource2 instanceof Generic) {
+              let used = resource2.used;
+              return new Generic(false);
+            } else {
+              let used = resource2.used;
+              let level = resource2.level;
+              let _record$1 = resource2;
+              return new SpellSlot(false, _record$1.level);
+            }
+          }
+        );
+      }
+    ),
+    _record.equiped,
+    _record.items,
+    _record.gold
+  );
+}
 
 // build/dev/javascript/char/classes/monk.mjs
 var FILEPATH2 = "src/classes/monk.gleam";
@@ -3865,7 +3907,7 @@ function martial_arts(charecter, state) {
             0,
             "My bare fists",
             toList([""]),
-            new Dice(1, 6),
+            toList([new Dice(1, 6)]),
             toList(["Dexterous"])
           )
         ),
@@ -3907,10 +3949,10 @@ function unarmored_movement(charecter, state) {
       "Pattern match failed, no pattern matched the value.",
       {
         value: $,
-        start: 4673,
-        end: 4729,
-        pattern_start: 4684,
-        pattern_end: 4692
+        start: 4675,
+        end: 4731,
+        pattern_start: 4686,
+        pattern_end: 4694
       }
     );
   }
@@ -3926,10 +3968,10 @@ function unarmored_movement(charecter, state) {
       "Pattern match failed, no pattern matched the value.",
       {
         value: $1,
-        start: 4732,
-        end: 4788,
-        pattern_start: 4743,
-        pattern_end: 4751
+        start: 4734,
+        end: 4790,
+        pattern_start: 4745,
+        pattern_end: 4753
       }
     );
   }
@@ -3964,10 +4006,10 @@ function monk_focus(charecter, state) {
       "Pattern match failed, no pattern matched the value.",
       {
         value: $,
-        start: 4963,
-        end: 5019,
-        pattern_start: 4974,
-        pattern_end: 4982
+        start: 4965,
+        end: 5021,
+        pattern_start: 4976,
+        pattern_end: 4984
       }
     );
   }
@@ -4894,6 +4936,104 @@ function slot(attrs, fallback) {
   return element2("slot", attrs, fallback);
 }
 
+// build/dev/javascript/char/spells.mjs
+function eldritch_blast(resource) {
+  return new Spell(
+    "Eldritch Blast",
+    0,
+    new Action(),
+    new Instant(),
+    new HitDc(),
+    120,
+    "You hurl a beam of crackling energy. Make a ranged spell attack against one creature or object in range. On a hit, the target takes 1d10 Force damage.",
+    resource
+  );
+}
+function magic_stone(resource) {
+  return new Spell(
+    "Magic Stone",
+    0,
+    new BonusAction(),
+    new Lasting(new Minutes(10)),
+    new HitDc(),
+    0,
+    "You touch one to three pebbles and imbue them with magic. You or someone else can make a ranged spell attack with one of the pebbles by throwing it or hurling it with a sling. If thrown, it has a range of 60 feet. If someone else attacks with the pebble, that attacker adds your spellcasting ability modifier, not the attacker\u2019s, to the attack roll. On a hit, the target takes bludgeoning damage equal to 1d6 + your spellcasting ability modifier. Hit or miss, the spell then ends on the stone.\n\n    If you cast this spell again, the spell ends early on any pebbles still affected by it.",
+    resource
+  );
+}
+function minor_illusion(resource) {
+  return new Spell(
+    "Minor Illusion",
+    0,
+    new Action(),
+    new Lasting(new Minutes(1)),
+    new SpellSave("intelligence"),
+    30,
+    "You create a sound or an image of an object within range that lasts for the duration. See the descriptions below for the effects of each. The illusion ends if you cast this spell again.\n\n    If a creature takes a Study action to examine the sound or image, the creature can determine that it is an illusion with a successful Intelligence (Investigation) check against your spell save DC. If a creature discerns the illusion for what it is, the illusion becomes faint to the creature.\n\n    Sound. If you create a sound, its volume can range from a whisper to a scream. It can be your voice, someone else\u2019s voice, a lion\u2019s roar, a beating of drums, or any other sound you choose. The sound continues unabated throughout the duration, or you can make discrete sounds at different times before the spell ends.\n\n    Image. If you create an image of an object\u2014such as a chair, muddy footprints, or a small chest\u2014it must be no larger than a 5-foot Cube. The image can\u2019t create sound, light, smell, or any other sensory effect. Physical interaction with the image reveals it to be an illusion, since things can pass through it.\n    Tags:",
+    resource
+  );
+}
+function alarm(resource) {
+  return new Spell(
+    "alarm",
+    1,
+    new Minutes(1),
+    new Concentration(new Hours(8)),
+    new Util(),
+    30,
+    "\n      You set an alarm against unwanted intrusion. Choose a door, a window, or an area within range that is no larger than a 20-foot cube. Until the spell ends, an alarm alerts you whenever a Tiny or larger creature touches or enters the warded area. When you cast the spell, you can designate creatures that won't set off the alarm. You also choose whether the alarm is mental or audible.\n\n      A mental alarm alerts you with a ping in your mind if you are within 1 mile of the warded area. This ping awakens you if you are sleeping.\n\n      An audible alarm produces the sound of a hand bell for 10 seconds within 60 feet.\n    ",
+    resource
+  );
+}
+function detect_magic(resource) {
+  return new Spell(
+    "Detect Magic",
+    1,
+    new Action(),
+    new Concentration(new Minutes(10)),
+    new Util(),
+    30,
+    "\n    For the duration, you sense the presence of magical effects within 30 feet of yourself. If you sense such effects, you can take the Magic action to see a faint aura around any visible creature or object in the area that bears the magic, and if an effect was created by a spell, you learn the spell\u2019s school of magic.\n\n    The spell is blocked by 1 foot of stone, dirt, or wood; 1 inch of metal; or a thin sheet of lead.\n    ",
+    resource
+  );
+}
+function hex(resource) {
+  return new Spell(
+    "Hex",
+    1,
+    new BonusAction(),
+    new Concentration(new Minutes(10)),
+    new SpellSave("strength"),
+    90,
+    "You place a curse on a creature that you can see within range. Until the spell ends, you deal an extra 1d6 Necrotic damage to the target whenever you hit it with an attack roll. Also, choose one ability when you cast the spell. The target has Disadvantage on ability checks made with the chosen ability.\n\n    If the target drops to 0 Hit Points before this spell ends, you can take a Bonus Action on a later turn to curse a new creature.\n\n    Using a Higher-Level Spell Slot. Your Concentration can last longer with a spell slot of level 2 (up to 4 hours), 3\u20134 (up to 8 hours), or 5+ (24 hours).",
+    resource
+  );
+}
+function fiendish_vigor(resource) {
+  return new Spell(
+    "Fiendish Vigor",
+    1,
+    new Action(),
+    new Instant(),
+    new Util(),
+    0,
+    "You gain 8 + 4 Temporary Hit Points.",
+    resource
+  );
+}
+function hellish_rebuke(resource) {
+  return new Spell(
+    "Fiendish Vigor",
+    1,
+    new Reaction(),
+    new Instant(),
+    new Util(),
+    60,
+    "The creature that damaged you is momentarily surrounded by green flames. It makes a Dexterity saving throw, taking 2d10 Fire damage on a failed save or half as much damage on a successful one.",
+    resource
+  );
+}
+
 // build/dev/javascript/char/classes/warlock.mjs
 var FILEPATH3 = "src/classes/warlock.gleam";
 function warlock_slots_amount(lvl) {
@@ -4978,15 +5118,15 @@ function warlock_lvl_1(spells) {
               "let_assert",
               FILEPATH3,
               "classes/warlock",
-              22,
+              23,
               "warlock_lvl_1",
               "Pattern match failed, no pattern matched the value.",
               {
                 value: $,
-                start: 986,
-                end: 1046,
-                pattern_start: 997,
-                pattern_end: 1008
+                start: 1e3,
+                end: 1060,
+                pattern_start: 1011,
+                pattern_end: 1022
               }
             );
           }
@@ -5073,6 +5213,63 @@ function pact_of_the_tomb(warlock_class, spells) {
         );
       })()
     )
+  );
+}
+function warlock_level_2(warlock_class, spell) {
+  let _record = warlock_class;
+  return new Class(
+    _record.name,
+    2,
+    _record.hit_dice,
+    _record.spell_casting_stat,
+    append(
+      warlock_class.features,
+      toList([
+        new Passive(
+          " Magical Cunning ",
+          "\n            You can perform an esoteric rite for 1 minute. At the end of it, you regain expended Pact Magic spell slots but no more than a number equal to half your maximum (round up). Once you use this feature, you can\u2019t do so again until you finish a Long Rest.\n          "
+        )
+      ])
+    ),
+    append(warlock_class.spells, toList([spell("pact_magic")]))
+  );
+}
+function devil_sight(warlock_class) {
+  let _record = warlock_class;
+  return new Class(
+    _record.name,
+    _record.level,
+    _record.hit_dice,
+    _record.spell_casting_stat,
+    append(
+      warlock_class.features,
+      toList([
+        new Passive(
+          "Devil\u2019s Sight",
+          "\n          You can see normally in Dim Light and Darkness\u2014both magical and nonmagical\u2014within 120 feet of yourself.\n          "
+        )
+      ])
+    ),
+    _record.spells
+  );
+}
+function fiendish_vigor2(warlock_class) {
+  let _record = warlock_class;
+  return new Class(
+    _record.name,
+    _record.level,
+    _record.hit_dice,
+    _record.spell_casting_stat,
+    append(
+      warlock_class.features,
+      toList([
+        new Passive(
+          "Fiendish Vigor",
+          "\n          You can cast False Life on yourself without expending a spell slot. When you cast the spell with this feature, you don\u2019t roll the die for the Temporary Hit Points; you automatically get the highest number on the die.\n          "
+        )
+      ])
+    ),
+    append(warlock_class.spells, toList([fiendish_vigor("none")]))
   );
 }
 
@@ -5292,6 +5489,66 @@ function echo$isDict(value3) {
   }
 }
 
+// build/dev/javascript/char/items.mjs
+function crok_gloves(char_tuble) {
+  return [
+    char_tuble[0],
+    (() => {
+      let _record = char_tuble[1];
+      return new CharecterState(
+        _record.ac,
+        _record.hp,
+        _record.speed,
+        _record.proficiency_bonus,
+        _record.resources,
+        append(toList(["Unarmed Strike"]), char_tuble[1].equiped),
+        insert(
+          char_tuble[1].items,
+          "Unarmed Strike",
+          new Weppon(
+            "Unarmed Strike",
+            0,
+            "My bare fists",
+            toList([""]),
+            toList([new Dice(1, 6), new Dice(1, 4)]),
+            toList(["Dexterous"])
+          )
+        ),
+        _record.gold
+      );
+    })()
+  ];
+}
+function tazer_staff(char_tuble) {
+  return [
+    char_tuble[0],
+    (() => {
+      let _record = char_tuble[1];
+      return new CharecterState(
+        _record.ac,
+        _record.hp,
+        _record.speed,
+        _record.proficiency_bonus,
+        _record.resources,
+        append(toList(["Tazer staff"]), char_tuble[1].equiped),
+        insert(
+          char_tuble[1].items,
+          "Tazer Staff",
+          new Weppon(
+            "Tazer Staff",
+            0,
+            "three times per day I can add an addional d8 of lighting damamge to an attack",
+            toList([""]),
+            toList([new Dice(1, 6)]),
+            toList(["Dexterous"])
+          )
+        ),
+        _record.gold
+      );
+    })()
+  ];
+}
+
 // build/dev/javascript/char/species/goliath.mjs
 function cloud_goliath(charecter) {
   let _record = charecter;
@@ -5345,80 +5602,6 @@ function cloud_goliath(charecter) {
   );
 }
 
-// build/dev/javascript/char/spells.mjs
-function eldritch_blast(resource) {
-  return new Spell(
-    "Eldritch Blast",
-    0,
-    new Action(),
-    new Instant(),
-    new HitDc(),
-    120,
-    "You hurl a beam of crackling energy. Make a ranged spell attack against one creature or object in range. On a hit, the target takes 1d10 Force damage.",
-    resource
-  );
-}
-function magic_stone(resource) {
-  return new Spell(
-    "Magic Stone",
-    0,
-    new BonusAction(),
-    new Lasting(new Minutes(10)),
-    new HitDc(),
-    0,
-    "You touch one to three pebbles and imbue them with magic. You or someone else can make a ranged spell attack with one of the pebbles by throwing it or hurling it with a sling. If thrown, it has a range of 60 feet. If someone else attacks with the pebble, that attacker adds your spellcasting ability modifier, not the attacker\u2019s, to the attack roll. On a hit, the target takes bludgeoning damage equal to 1d6 + your spellcasting ability modifier. Hit or miss, the spell then ends on the stone.\n\n    If you cast this spell again, the spell ends early on any pebbles still affected by it.",
-    resource
-  );
-}
-function minor_illusion(resource) {
-  return new Spell(
-    "Minor Illusion",
-    0,
-    new Action(),
-    new Lasting(new Minutes(1)),
-    new SpellSave("intelligence"),
-    30,
-    "You create a sound or an image of an object within range that lasts for the duration. See the descriptions below for the effects of each. The illusion ends if you cast this spell again.\n\n    If a creature takes a Study action to examine the sound or image, the creature can determine that it is an illusion with a successful Intelligence (Investigation) check against your spell save DC. If a creature discerns the illusion for what it is, the illusion becomes faint to the creature.\n\n    Sound. If you create a sound, its volume can range from a whisper to a scream. It can be your voice, someone else\u2019s voice, a lion\u2019s roar, a beating of drums, or any other sound you choose. The sound continues unabated throughout the duration, or you can make discrete sounds at different times before the spell ends.\n\n    Image. If you create an image of an object\u2014such as a chair, muddy footprints, or a small chest\u2014it must be no larger than a 5-foot Cube. The image can\u2019t create sound, light, smell, or any other sensory effect. Physical interaction with the image reveals it to be an illusion, since things can pass through it.\n    Tags:",
-    resource
-  );
-}
-function alarm(resource) {
-  return new Spell(
-    "alarm",
-    1,
-    new Minutes(1),
-    new Concentration(new Hours(8)),
-    new Util(),
-    30,
-    "\n      You set an alarm against unwanted intrusion. Choose a door, a window, or an area within range that is no larger than a 20-foot cube. Until the spell ends, an alarm alerts you whenever a Tiny or larger creature touches or enters the warded area. When you cast the spell, you can designate creatures that won't set off the alarm. You also choose whether the alarm is mental or audible.\n\n      A mental alarm alerts you with a ping in your mind if you are within 1 mile of the warded area. This ping awakens you if you are sleeping.\n\n      An audible alarm produces the sound of a hand bell for 10 seconds within 60 feet.\n    ",
-    resource
-  );
-}
-function detect_magic(resource) {
-  return new Spell(
-    "alarm",
-    1,
-    new Action(),
-    new Concentration(new Minutes(10)),
-    new Util(),
-    30,
-    "\n    For the duration, you sense the presence of magical effects within 30 feet of yourself. If you sense such effects, you can take the Magic action to see a faint aura around any visible creature or object in the area that bears the magic, and if an effect was created by a spell, you learn the spell\u2019s school of magic.\n\n    The spell is blocked by 1 foot of stone, dirt, or wood; 1 inch of metal; or a thin sheet of lead.\n    ",
-    resource
-  );
-}
-function hex(resource) {
-  return new Spell(
-    "Hex",
-    1,
-    new BonusAction(),
-    new Concentration(new Minutes(10)),
-    new SpellSave("strength"),
-    90,
-    "You place a curse on a creature that you can see within range. Until the spell ends, you deal an extra 1d6 Necrotic damage to the target whenever you hit it with an attack roll. Also, choose one ability when you cast the spell. The target has Disadvantage on ability checks made with the chosen ability.\n\n    If the target drops to 0 Hit Points before this spell ends, you can take a Bonus Action on a later turn to curse a new creature.\n\n    Using a Higher-Level Spell Slot. Your Concentration can last longer with a spell slot of level 2 (up to 4 hours), 3\u20134 (up to 8 hours), or 5+ (24 hours).",
-    resource
-  );
-}
-
 // build/dev/javascript/char/charecters/arene.mjs
 function init2() {
   let _pipe = empty_sheet();
@@ -5443,7 +5626,7 @@ function init2() {
     (() => {
       let _pipe$62 = warlock_lvl_1(toList([]));
       let _pipe$72 = warlock_pact_of_the_dreadnought(_pipe$62);
-      return pact_of_the_tomb(
+      let _pipe$82 = pact_of_the_tomb(
         _pipe$72,
         toList([
           eldritch_blast,
@@ -5454,12 +5637,17 @@ function init2() {
           hex
         ])
       );
+      let _pipe$92 = warlock_level_2(_pipe$82, hellish_rebuke);
+      let _pipe$102 = devil_sight(_pipe$92);
+      return fiendish_vigor2(_pipe$102);
     })()
   );
   let _pipe$7 = add_feat(_pipe$6, lucky());
   let _pipe$8 = add_feat(_pipe$7, leg_of_the_collected());
   let _pipe$9 = add_feat(_pipe$8, prostetic_leg());
-  return init(_pipe$9);
+  let _pipe$10 = init(_pipe$9);
+  let _pipe$11 = crok_gloves(_pipe$10);
+  return tazer_staff(_pipe$11);
 }
 
 // build/dev/javascript/gleam_stdlib/gleam/bool.mjs
@@ -9165,8 +9353,11 @@ function register() {
 }
 
 // build/dev/javascript/frontend/frontend.ffi.mjs
-function set_timeout(delay, cb) {
-  window.setTimeout(cb, delay);
+function set_interval(delay, cb) {
+  window.setInterval(() => {
+    console.log("inteval");
+    cb();
+  }, delay);
 }
 
 // build/dev/javascript/frontend/frontend.mjs
@@ -9197,6 +9388,8 @@ var SpendResource = class extends CustomType {
     this.name = name;
   }
 };
+var LongRest = class extends CustomType {
+};
 var Save = class extends CustomType {
 };
 var SaveRes = class extends CustomType {
@@ -9212,9 +9405,13 @@ var Damage = class extends CustomType {
 function tick2() {
   return from(
     (dispatch) => {
-      return set_timeout(5e3, () => {
-        return dispatch(new Save());
-      });
+      return set_interval(
+        6e4,
+        () => {
+          echo2("test", "src/frontend.gleam", 73);
+          return dispatch(new Save());
+        }
+      );
     }
   );
 }
@@ -9238,7 +9435,13 @@ function init4(_) {
   );
   _block = unwrap2(_pipe$3, init_state);
   let state = _block;
-  return [new Model(charecter, state, new Ok(0)), tick2()];
+  let _block$1;
+  let _pipe$4 = crok_gloves([charecter, state]);
+  _block$1 = tazer_staff(_pipe$4);
+  let $1 = _block$1;
+  let charecter$1 = $1[0];
+  let state$1 = $1[1];
+  return [new Model(charecter$1, state$1, new Ok(0)), tick2()];
 }
 function health_view(model) {
   return div(
@@ -9326,7 +9529,12 @@ function item_view(item) {
           let tags = item.tags;
           let dice = item.dice;
           let ability_score = item.ability_score;
-          return div(toList([]), toList([dice_view(dice)]));
+          return div(
+            toList([]),
+            map(dice, (dice2) => {
+              return dice_view(dice2);
+            })
+          );
         } else if (item instanceof Armor) {
           let cost = item.cost;
           let description = item.description;
@@ -9357,6 +9565,7 @@ function items_view(model) {
     map(
       (() => {
         let _pipe = model.charecter_state.items;
+        echo2(_pipe, "src/frontend.gleam", 226);
         return values(_pipe);
       })(),
       item_view
@@ -9459,6 +9668,40 @@ function error_boundery(or2, try$2) {
   } else {
     return or2;
   }
+}
+function passive_perception_view(model) {
+  return error_boundery(
+    none(),
+    () => {
+      return try$(
+        map_get(model.charecter.skills, "perception"),
+        (perception) => {
+          return try$(
+            map_get(model.charecter.stats, perception.attribute),
+            (wis) => {
+              let _block;
+              let _block$1;
+              let $ = perception.proficient;
+              if ($) {
+                _block$1 = 10 + mod_formula(wis) + model.charecter_state.proficiency_bonus;
+              } else {
+                _block$1 = 10 + mod_formula(wis);
+              }
+              let _pipe = _block$1;
+              _block = to_string(_pipe);
+              let mod_string = _block;
+              return new Ok(
+                h1(
+                  toList([]),
+                  toList([text2("passive perception:" + mod_string)])
+                )
+              );
+            }
+          );
+        }
+      );
+    }
+  );
 }
 function spell_save_view(attribute3, charecter) {
   return error_boundery(
@@ -9807,8 +10050,18 @@ function view2(model) {
     toList([class$("px-5")]),
     toList([
       button(
-        toList([on_click(new Save())]),
+        toList([
+          class$("px-5 py-5 rounded-2xl"),
+          on_click(new Save())
+        ]),
         toList([text3("save")])
+      ),
+      button(
+        toList([
+          class$("px-5 py-5 rounded-2xl"),
+          on_click(new LongRest())
+        ]),
+        toList([text3("Long rest")])
       ),
       name_view(model),
       div(
@@ -9833,7 +10086,8 @@ function view2(model) {
               )
             ])
           ),
-          health_view(model)
+          health_view(model),
+          passive_perception_view(model)
         ])
       ),
       div(
@@ -9929,8 +10183,6 @@ function update4(model, msg) {
     ];
   } else if (msg instanceof UpdateHp) {
     let update_type = msg[0];
-    echo2(update_type, "src/frontend.gleam", 107);
-    echo2(model.hp_input, "src/frontend.gleam", 108);
     return guard(
       (() => {
         let _pipe = model.hp_input;
@@ -9952,7 +10204,7 @@ function update4(model, msg) {
             "todo",
             FILEPATH4,
             "frontend",
-            113,
+            114,
             "update",
             "add temp health",
             {}
@@ -9986,10 +10238,10 @@ function update4(model, msg) {
     );
   } else if (msg instanceof SpendResource) {
     let name = msg.name;
-    echo2("spending resources", "src/frontend.gleam", 126);
+    echo2("spending resources", "src/frontend.gleam", 127);
     let _block;
     let _pipe = map_get(model.charecter_state.resources, name);
-    echo2(_pipe, "src/frontend.gleam", 127);
+    echo2(_pipe, "src/frontend.gleam", 128);
     _block = replace_error(_pipe, [model, none2()]);
     let resource = _block;
     let _pipe$1 = unwrap_both(
@@ -9998,11 +10250,11 @@ function update4(model, msg) {
         (resources) => {
           let _block$1;
           let _pipe$12 = partition(resources, resource_is_used);
-          _block$1 = echo2(_pipe$12, "src/frontend.gleam", 132);
+          _block$1 = echo2(_pipe$12, "src/frontend.gleam", 133);
           let used_unused = _block$1;
           let _block$2;
           let _pipe$2 = update_resources(used_unused);
-          _block$2 = echo2(_pipe$2, "src/frontend.gleam", 134);
+          _block$2 = echo2(_pipe$2, "src/frontend.gleam", 135);
           let resource$1 = _block$2;
           return [
             (() => {
@@ -10034,7 +10286,19 @@ function update4(model, msg) {
         }
       )
     );
-    return echo2(_pipe$1, "src/frontend.gleam", 142);
+    return echo2(_pipe$1, "src/frontend.gleam", 143);
+  } else if (msg instanceof LongRest) {
+    return [
+      (() => {
+        let _record = model;
+        return new Model(
+          _record.charecter,
+          long_rest(model.charecter, model.charecter_state),
+          _record.hp_input
+        );
+      })(),
+      none2()
+    ];
   } else if (msg instanceof Save) {
     print("we should be saving");
     let _block;
@@ -10064,7 +10328,7 @@ function main() {
       37,
       "main",
       "Pattern match failed, no pattern matched the value.",
-      { value: $, start: 937, end: 978, pattern_start: 948, pattern_end: 953 }
+      { value: $, start: 949, end: 990, pattern_start: 960, pattern_end: 965 }
     );
   }
   let app = application(init4, update4, view2);
@@ -10079,10 +10343,10 @@ function main() {
       "Pattern match failed, no pattern matched the value.",
       {
         value: $1,
-        start: 1032,
-        end: 1081,
-        pattern_start: 1043,
-        pattern_end: 1048
+        start: 1044,
+        end: 1093,
+        pattern_start: 1055,
+        pattern_end: 1060
       }
     );
   }

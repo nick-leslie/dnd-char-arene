@@ -1,3 +1,4 @@
+import spells
 import lustre/element/html
 import gleam/option
 import gleam/list
@@ -65,7 +66,7 @@ pub fn warlock_pact_of_the_dreadnought(warlock_class:char.Class) {
   )
 }
 
-
+// eldrich evocation
 pub fn pact_of_the_tomb(warlock_class:char.Class,spells:List(fn(String) -> char.Spell)) {
   char.Class(
     ..warlock_class,
@@ -82,5 +83,51 @@ pub fn pact_of_the_tomb(warlock_class:char.Class,spells:List(fn(String) -> char.
         ),
       ]),
       spells:list.append(warlock_class.spells,spells |> list.map(fn(spell_fn) { spell_fn("pact_magic")}))
+  )
+}
+
+// lvl 2
+pub fn warlock_level_2(warlock_class:char.Class,spell:fn(String) -> char.Spell) {
+  char.Class(
+    ..warlock_class,
+      level:2,
+      features: list.append(warlock_class.features,[
+        char.Passive( // todo make this a resouce triggred on long rest
+          name:" Magical Cunning ",
+          text:"
+            You can perform an esoteric rite for 1 minute. At the end of it, you regain expended Pact Magic spell slots but no more than a number equal to half your maximum (round up). Once you use this feature, you can’t do so again until you finish a Long Rest.
+          ",
+        ),
+      ]),
+      spells:list.append(warlock_class.spells,[spell("pact_magic")])
+  )
+}
+
+pub fn devil_sight(warlock_class:char.Class) {
+  char.Class(
+    ..warlock_class,
+      features: list.append(warlock_class.features,[
+        char.Passive( // todo make this a resouce triggred on long rest
+          name:"Devil’s Sight",
+          text:"
+          You can see normally in Dim Light and Darkness—both magical and nonmagical—within 120 feet of yourself.
+          ",
+        ),
+      ]),
+  )
+}
+
+pub fn fiendish_vigor(warlock_class:char.Class) {
+  char.Class(
+    ..warlock_class,
+      features: list.append(warlock_class.features,[
+        char.Passive( // todo make this a resouce triggred on long rest
+          name:"Fiendish Vigor",
+          text:"
+          You can cast False Life on yourself without expending a spell slot. When you cast the spell with this feature, you don’t roll the die for the Temporary Hit Points; you automatically get the highest number on the die.
+          ",
+        ),
+      ]),
+      spells:list.append(warlock_class.spells,[spells.fiendish_vigor("none")])
   )
 }

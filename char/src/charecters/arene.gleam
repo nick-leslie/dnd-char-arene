@@ -1,8 +1,10 @@
+import items
 import feats
 import classes/monk
 import spells
 import classes/warlock
 import species/goliath
+
 import char
 
 pub fn init() {
@@ -17,9 +19,14 @@ pub fn init() {
   |> char.add_class("warlock",warlock.warlock_lvl_1([])
                               |> warlock.warlock_pact_of_the_dreadnought
                               |> warlock.pact_of_the_tomb([spells.eldritch_blast,spells.alarm,spells.detect_magic,spells.magic_stone,spells.minor_illusion,spells.hex])
+                              |> warlock.warlock_level_2(spells.hellish_rebuke)
+                              |> warlock.devil_sight()
+                              |> warlock.fiendish_vigor()
   )
   |> char.add_feat(feats.lucky())
   |> char.add_feat(feats.leg_of_the_collected())
   |> char.add_feat(feats.prostetic_leg())
   |> char.init()
+  |> items.crok_gloves()
+  |> items.tazer_staff()
 }

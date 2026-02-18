@@ -75,7 +75,7 @@ fn martial_arts(charecter:char.Charecter,state:char.CharecterState) {
       description:"My bare fists",
       cost:0,
       tags:[""],
-      dice:char.Dice(number:1,max:6),
+      dice:[char.Dice(number:1,max:6)],
       ability_score:["Dexterous"] // will pick the highest
     ))
   ))

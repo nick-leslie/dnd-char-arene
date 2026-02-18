@@ -30,7 +30,7 @@ import plinth/browser/document
 import plinth/browser/element as browser_element
 import gleam/http
 import gleam/http/request
-
+import items
 // MAIN ------------------------------------------------------------------------
 
 pub fn main() {
@@ -58,6 +58,8 @@ fn init(_) -> #(Model,Effect(Msg)) {
   |> result.map(json.parse(_,char.charecter_state_decoder()))
   |> result.unwrap(Error(json.UnableToDecode([])))
   |> result.unwrap(init_state)
+  let #(charecter,state) =  items.crok_gloves(#(charecter,state))
+  |> items.tazer_staff()
   #(Model(
     charecter:charecter,
     charecter_state:state,
@@ -67,8 +69,8 @@ fn init(_) -> #(Model,Effect(Msg)) {
 
 fn tick() -> Effect(Msg) {
   use dispatch <- effect.from
-  use <- set_timeout(5000)
-
+  use <- set_interval(60000)
+  echo "test"
   dispatch(Save)
 }
 
@@ -78,6 +80,7 @@ pub opaque type Msg {
   SetHpInput(hp:String)
   UpdateHp(HpUpdateType)
   SpendResource(name:String)
+  LongRest
   Save
   SaveRes(Result(response.Response(String), rsvp.Error))
 }
@@ -104,8 +107,6 @@ fn update(model: Model, msg: Msg) -> #(Model,Effect(Msg)) {
       ),effect.none())
     }
     UpdateHp(update_type) -> {
-      echo update_type
-      echo model.hp_input
       use <- bool.guard(model.hp_input |> result.is_error,#(model,effect.none()))
       let hp_mod = case update_type {
         Damage -> -{model.hp_input |> result.unwrap(0)}
@@ -141,6 +142,13 @@ fn update(model: Model, msg: Msg) -> #(Model,Effect(Msg)) {
         effect.none())
       })  |> echo
     }
+    LongRest -> {
+      #(Model(
+        ..model,
+        charecter_state:char.long_rest(model.charecter,model.charecter_state)
+      ),
+      effect.none())
+    }
 
   }
 }
@@ -148,8 +156,8 @@ fn update(model: Model, msg: Msg) -> #(Model,Effect(Msg)) {
 
 /// When writing custom effects that need FFI, it's common practice to define the
 /// externals separate to the effect itself.
-@external(javascript, "./frontend.ffi.mjs", "set_timeout")
-fn set_timeout(_delay: Int, _cb: fn() -> a) -> Nil {
+@external(javascript, "./frontend.ffi.mjs", "set_interval")
+fn set_interval(_delay: Int, _cb: fn() -> a) -> Nil {
   // It's good practice to provide a fallback for side effects that rely on FFI
   // where possible. This means your app can run - without the side effect - in
   // environments other than the browser.
@@ -161,12 +169,14 @@ fn set_timeout(_delay: Int, _cb: fn() -> a) -> Nil {
 pub fn view(model: Model) -> Element(Msg) {
   html.div([attribute.class("px-5")],
     [
-      html.button([event.on_click(Save)],[html.text("save")]),
+      html.button([attribute.class("px-5 py-5 rounded-2xl"), event.on_click(Save)],[html.text("save")]),
+      html.button([attribute.class("px-5 py-5 rounded-2xl"), event.on_click(LongRest)],[html.text("Long rest")]),
       name_view(model),
       html.div([attribute.class("flex flex-row gap-5")],[
         html.h1([],[element.text(string.append("Ac:",int.to_string(model.charecter_state.ac)))]),
         html.h1([],[element.text(string.append("speed:",int.to_string(model.charecter_state.speed)))]),
-        health_view(model)
+        health_view(model),
+        passive_perception_view(model)
       ]),
       html.div([attribute.class("flex flex-col gap-5")],[
         // we should change the grid cols based on window size
@@ -213,7 +223,7 @@ fn health_view(model:Model) {
 
 fn items_view(model:Model) {
   html.div([],
-    list.map(model.charecter_state.items |> dict.values,item_view)
+    list.map(model.charecter_state.items |> echo |> dict.values,item_view)
   )
 }
 
@@ -229,13 +239,28 @@ fn item_view(item:char.Item) {
       }
       char.Trinket(_name, cost:,description:,tags:) -> element.none()
       char.Weppon(_name, cost:, tags:, dice:, ability_score:,description:) -> {
-        html.div([],[
-          dice_view(dice)
-        ])
+
+        html.div([],
+          {
+            use dice <- list.map(dice)
+            dice_view(dice)
+          }
+        )
       }
     },
     html.h1([],[html.text(string.append("cost",int.to_string(item.cost)))])
   ])
+}
+
+fn passive_perception_view(model:Model) {
+  use <- error_boundery(element.none())
+  use perception <- result.try(dict.get(model.charecter.skills,"perception"))
+  use wis <- result.try(dict.get(model.charecter.stats,perception.attribute))
+  let mod_string = case perception.proficient {
+    False -> 10 + char.mod_formula(wis)
+    True ->  10 + char.mod_formula(wis) + model.charecter_state.proficiency_bonus
+  } |> int.to_string
+  Ok(html.h1([],[element.text("passive perception:"<>mod_string)]))
 }
 
 fn dice_view(dice:char.Dice) {
@@ -259,6 +284,8 @@ fn order_attribute(attribute) {
     _ -> 7
   }
 }
+
+
 
 fn skill_view(skill:char.Skill,stats:dict.Dict(String,Int),proficiency_bonus:Int) {
   case dict.get(stats,skill.attribute) {
@@ -460,6 +487,9 @@ fn notes_view() {
     cloths
     textiles
     wooden products
+
+    I have military uniform
+
   ")
 }
 

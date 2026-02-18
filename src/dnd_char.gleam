@@ -91,7 +91,7 @@ fn load() {
 }
 
 fn serve_index() -> Response {
-  let #(charecter,_state) = arene.init()
+  let #(charecter,init_state) = arene.init()
   //todo this is bad its alot of waisted time just to validate that the file is json make this quicker
   // just extract the string out and validate it then discard no need to re apply.
   // you can use result map to flaten
@@ -99,6 +99,7 @@ fn serve_index() -> Response {
   |> result.map(json.parse(_,char.charecter_state_decoder()))
   |> result.replace_error(json.UnableToDecode([]))
   |> result.flatten
+  |> result.replace_error(init_state)
   let init_json = char.charecter_state_to_json(state) |> json.to_string
   let model = frontend.Model(charecter,state,Ok(0))
   let content = // piped into from frontend
